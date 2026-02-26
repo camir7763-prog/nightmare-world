@@ -236,15 +236,16 @@ if __name__ == "__main__":
             r = request.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook",
                             params={"url": webhook_url}, timeout=10)
             logging.info("Webhook устоновлен:%s", r.text)
-        except Exception:
-            logging.exception("Ошибка при устоновке webhook")
             port = int(os.environ.get("PORT", 10000))
             logging.info("starting server on port %s", port)
             app.run(host='0.0.0.0', port=port)
+        except Exception:
+            logging.exception("Ошибка при устоновке webhook")
+
         else:
             logging.info("Запуск бота в режим polling")
             bot.remove_webhook()
             bot.infinity_polling(timeout=60)
 
-            bot.infinity_polling(timeout=60)
+
 
