@@ -228,7 +228,7 @@ def slot_game(message):
     else:
         bot.send_message(message.chat.id, "Ты проиграл")
 
-if __name__ == "main":
+if __name__ == "__main__":
     server_url = os.getenv("RENDER_EXTERNAL_URL")
     if server_url and TOKEN:
         webhook_url = f"server_url.rstrip('/'){TOKEN}/setWebhook"
@@ -245,4 +245,5 @@ if __name__ == "main":
             logging.info("Запуск бота в режим polling")
             bot.remove_webhook()
             bot.infinity_polling(timeout=60)
+
             bot.infinity_polling(timeout=60)
