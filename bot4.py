@@ -238,7 +238,7 @@ if __name__ == "__main__":
             logging.info("Webhook устоновлен:%s", r.text)
         except Exception:
             logging.exception("Ошибка при устоновке webhook")
-            post = int(os.environ.get("PORT", 10000))
+            port = int(os.environ.get("PORT", 10000))
             logging.info("starting server on port %s", port)
             app.run(host='0.0.0.0', port=port)
         else:
@@ -247,3 +247,4 @@ if __name__ == "__main__":
             bot.infinity_polling(timeout=60)
 
             bot.infinity_polling(timeout=60)
+
