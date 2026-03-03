@@ -212,17 +212,17 @@ def slot_game(message):
     value = bot.send_dice(message.chat.id, emoji="🎰").dice.value
 
     if value in (1, 22, 43):                                # 3 одинаковых значения
-        data["users"][message.chat.id]("money") == 3000
+        data["users"][message.chat.id]("money") = 3000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 3000. "
                                           f"Текуший баланс: {data['users'][message.chat.id]['money']}")
     elif value in (16, 32, 48):                             # Первые два значения - 7
-        data["users"][message.chat.id]("money") == 5000
+        data["users"][message.chat.id]("money") = 5000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 5000"
                                           f"Текуший баланс: {data['users'][message.chat.id]['money']}")
 
     elif value == 64:                                       # Три 7
         bot.send_message(message.chat.id, "Jackpot")
-        data["users"][message.chat.id]("money") == 10000
+        data["users"][message.chat.id]("money") = 10000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 10000"
                                           f"Текуший баланс: {data['users'][message.chat.id]['money']}")
     else:
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     if server_url and TOKEN:
         webhook_url = f"server_url.rstrip('/'){TOKEN}/setWebhook"
         try:
-            r = request.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook", params={"url": webhook_url}, timeout=10)
+            r = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook", params={"url": webhook_url}, timeout=10)
             logging.info("Webhook устоновлен:%s", r.text)
             port = int(os.environ.get("PORT", 10000))
             logging.info("starting server on port %s", port)
@@ -245,6 +245,7 @@ if __name__ == "__main__":
             logging.info("Запуск бота в режим polling")
             bot.remove_webhook()
             bot.infinity_polling(timeout=60)
+
 
 
 
