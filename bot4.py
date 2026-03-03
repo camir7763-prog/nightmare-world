@@ -216,7 +216,7 @@ def slot_game(message):
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 3000. "
                                           f"Текуший баланс: {data['users'][message.chat.id]['money']}")
     elif value in (16, 32, 48):                             # Первые два значения - 7
-        data["users"][message.chat.id][money"] = 5000
+        data["users"][message.chat.id]["money"] = 5000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 5000"
                                           f"Текуший баланс: {data['users'][message.chat.id]['money']}")
 
@@ -245,6 +245,7 @@ if __name__ == "__main__":
             logging.info("Запуск бота в режим polling")
             bot.remove_webhook()
             bot.infinity_polling(timeout=60)
+
 
 
 
