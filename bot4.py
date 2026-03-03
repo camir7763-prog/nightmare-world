@@ -91,7 +91,7 @@ def chat(user_id, text):
             "Authorization":f"Bearer {API_KEY}" if API_KEY else ""}
         data = {"model": "deepseek-ai/DeepSeek-R1-0528","messages": history[str(user_id)]}
 
-        response = requests.posr(url, headers=headers, json=data, timeout=300)
+        response = requests.post(url, headers=headers, json=data, timeout=300)
         data = response.json()
 
         if isinstance(data, dict) and data.get('choices'):
@@ -233,8 +233,7 @@ if __name__ == "__main__":
     if server_url and TOKEN:
         webhook_url = f"server_url.rstrip('/'){TOKEN}/setWebhook"
         try:
-            r = request.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-                            params={"url": webhook_url}, timeout=10)
+            r = request.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook", params={"url": webhook_url}, timeout=10)
             logging.info("Webhook устоновлен:%s", r.text)
             port = int(os.environ.get("PORT", 10000))
             logging.info("starting server on port %s", port)
@@ -246,6 +245,7 @@ if __name__ == "__main__":
             logging.info("Запуск бота в режим polling")
             bot.remove_webhook()
             bot.infinity_polling(timeout=60)
+
 
 
 
