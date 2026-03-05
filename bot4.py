@@ -20,6 +20,7 @@ app = Flask(__name__)
 MAX_LEN = 4096
 
 
+
 def convert_markdown_to_html(text: str) -> str:
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
@@ -29,7 +30,7 @@ def convert_markdown_to_html(text: str) -> str:
     text = re.sub(r'\[(.*?)\](\(.*?)\)', r'<a href="\2">>\1</b>', text)
     return text
 
-def send_long_messange(chat_id, text, parse_mode='HTML'):
+def send_long_message(chat_id, text, parse_mode='HTML'):
     try:
         safe_text = convert_markdown_to_html(text or "")
         for part in util.smart_split(safe_text, MAX_LEN):
@@ -80,12 +81,12 @@ if not API_KEY:
 def chat(user_id, text):
     try:
         if str(user_id) not in history:
-            history[str(user_id)] = ({"role": "system","content": "Ты - дружелюбный помошник"})
+            history[str(user_id)] = [{"role": "system","content": "Ты - дружелюбный помошник"}]
         history[str(user_id)].append({"role": "user", "content":text})
         if len(history[str(user_id)]) > 16:
             history[str(user_id)] = [history[str(user_id)][0]] + history[str(user_id)][-15:]
 
-        url = "https://api.intellgence.io.solutions/api/v1/chat/completions"
+        url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization":f"Bearer {API_KEY}" if API_KEY else ""}
@@ -103,42 +104,47 @@ def chat(user_id, text):
 
             save_history()
 
-            if '</think' in content:
-                return  content.split('</think', 1)[1]
+            if '</think>' in content:
+                return content.split('</think>', 1)[1]
             return content
         else:
-            logging.error(f"Ошибка API:{json.dumps(data, ensure_ascii=False)}")
+            logging.error(f"Ошибка API: ")
     except Exception as e:
-        logging.error(f"Ошибка при запросе: {e}")
-        send_long_messange(f"Ошибка при запрос: {e}, повторите попытку позже")
+        logging.error(f"Ошибка при запросе")
+        send_long_message(user_id, f"ошибка при запросе: {e}, повторите попытку позже")
 
 
 
-data = {"users": {}}
+db = {"users": {}}
 db_path = "db.json"
 
+
+def save_db():
+    with open("db.json", "w", encoding='utf-8') as file:
+        json.dump(db, file, ensure_ascii=False, indent=4)
+        
 if os.path.exists(db_path) and os.path.getsize(db_path) != 0:
     with open(db_path, "r", encoding='utf-8') as file:
-        data = json.load(file)
+        db = json.load(file)
 else:
     with open("db.json", "w", encoding='utf-8') as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+        json.dump(db, file, ensure_ascii=False, indent=4)
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.chat.id
 
-    if user_id not in data["users"] or data ["users"].get(user_id).get("awaiting") == ("name"):
-        data["users"][user_id] = {}
-        data["users"][user_id]["awaiting"] = "name"
-
+    if user_id not in db["users"] or db ["users"].get(user_id).get("awaiting") == ("name"):
+        db["users"][user_id] = {}
+        db["users"][user_id]["awaiting"] = "name"
+        save_db()
         bot.send_message(message.chat.id, "Введи свое имя")
 
         return
 
-    data["users"][user_id]["money"] == 10000
-
+    db["users"][user_id]["money"] == 20000
+    save_db()
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     slot_button = telebot.types.KeyboardButton("Игровой автомат")
@@ -146,7 +152,7 @@ def start(message):
 
     keyboard.add(slot_button, dice_button)
 
-    bot.send_message(message.chat.id, f"Привет",{data["users"][user_id]["awaiting"]}, reply_markup=keyboard)
+    bot.send_message(message.chat.id, f"Привет",{db["users"][user_id]["awaiting"]}, reply_markup=keyboard)
 
 @bot.message_handler(commands=['info'])
 def info(message):
@@ -156,10 +162,11 @@ def info(message):
 def text(message):
     user_id = message.chat.id
 
-    if data["users"].get(user_id).get("awaiting") == "name":
-        data["users"][user_id]["name"] == message.text
-        data["users"][user_id]["awaiting"] == None
-        data["users"] [user_id]["money"] == 10000
+    if db["users"].get(user_id).get("awaiting") == "name":
+        db["users"][user_id]["name"] = message.text
+        db["users"][user_id]["awaiting"] = None
+        db["users"] [user_id]["money"] = 10000
+        save_db()
         start(message)
         return
 
@@ -173,18 +180,20 @@ def text(message):
     elif message.text == "Игральный кубик":
         dice_game(message)
     else:
-        msg = bot.send_message(message.chat.id, "Думаю над ответом...")
+        msg = bot.send_message(message.chat.id, "Думаю над ответом")
         try:
             answer = chat(message.chat.id, message.text)
-            send_long_messange(message.chat.id, answer)
+            send_long_message(message.chat.id, answer)
         except Exception as e:
             logging.error(e)
-            bot.send_message(message.chat.id, "Возникла ошибка при обработка запроса повторите попытку позже")
+            bot.send_message(message.chat.id, "Возникла ошибка при обработке запроса")
+
         finally:
             try:
                 bot.delete_message(message.chat.id, msg.message_id)
             except Exception:
                 pass
+    save_db()
 
 def dice_game(message):
     keyboard = telebot.types.InlineKeyboardMarkup(row_width=3)
@@ -212,39 +221,42 @@ def slot_game(message):
     value = bot.send_dice(message.chat.id, emoji="🎰").dice.value
 
     if value in (1, 22, 43):                                # 3 одинаковых значения
-        data["users"][message.chat.id]["money"] = 3000
+        db["users"][message.chat.id]["money"] == 3000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 3000. "
-                                          f"Текуший баланс: {data['users'][message.chat.id]['money']}")
+                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     elif value in (16, 32, 48):                             # Первые два значения - 7
-        data["users"][message.chat.id]["money"] = 5000
+        db["users"][message.chat.id]["money"] == 5000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 5000"
-                                          f"Текуший баланс: {data['users'][message.chat.id]['money']}")
+                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
 
     elif value == 64:                                       # Три 7
         bot.send_message(message.chat.id, "Jackpot")
-        data["users"][message.chat.id]["money"] = 10000
+        db["users"][message.chat.id]["money"] == 10000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 10000"
-                                          f"Текуший баланс: {data['users'][message.chat.id]['money']}")
+                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     else:
         bot.send_message(message.chat.id, "Ты проиграл")
+
 
 if __name__ == "__main__":
     server_url = os.getenv("RENDER_EXTERNAL_URL")
     if server_url and TOKEN:
-        webhook_url = f"server_url.rstrip('/'){TOKEN}/setWebhook"
+        webhook_url = f"{server_url.rstrip('/')}/{TOKEN}"
         try:
-            r = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook", params={"url": webhook_url}, timeout=10)
-            logging.info("Webhook устоновлен:%s", r.text)
+            r = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook",
+                             params={"url": webhook_url}, timeout=10)
+            logging.info("Webhook установлен: %s", r.text)
             port = int(os.environ.get("PORT", 10000))
-            logging.info("starting server on port %s", port)
+            logging.info("Starting server on port %s", port)
             app.run(host='0.0.0.0', port=port)
         except Exception:
-            logging.exception("Ошибка при устоновке webhook")
+            logging.exception("Ошибка при установке Webhook")
+            
 
-        else:
-            logging.info("Запуск бота в режим polling")
-            bot.remove_webhook()
-            bot.infinity_polling(timeout=60)
+
+
+
+
 
 
 
