@@ -213,8 +213,14 @@ def dice_game(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
 def diceButtonClicked(call):
-    value = bot.send_dice(call.message.chat.id, emoji="").dice.value
+    value = bot.send_dice(call.message.chat.id, emoji="🎲").dice.value
     if str(value) == call.data:
+        if str(value) == call.data:
+            win = 5000  # сумма выигрыша
+            db["users"][call.message.chat.id]["money"] += win
+
+            bot.send_message(call.message.chat.id,
+                             text=f"Ты выиграл {win}! 🎉\nБаланс: {db['users'][call.message.chat.id]['money']}")
         bot.send_message(call.message.chat.id, "Ты выиграл")
     else:
         bot.send_message(call.message.chat.id, "Попробуй еще раз")
