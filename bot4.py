@@ -223,17 +223,17 @@ def slot_game(message):
     value = bot.send_dice(message.chat.id, emoji="🎰").dice.value
 
     if value in (1, 22, 43):                                # 3 одинаковых значения
-        db["users"][message.chat.id]["money"] == 1000
+        db["users"][message.chat.id]["money"] += 1000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 1000. "
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     elif value in (16, 32, 48):                             # Первые два значения - 7
-        db["users"][message.chat.id]["money"] == 5000
+        db["users"][message.chat.id]["money"] += 3500
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 3500"
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
 
     elif value == 64:                                       # Три 7
         bot.send_message(message.chat.id, "Jackpot")
-        db["users"][message.chat.id]["money"] == 10000
+        db["users"][message.chat.id]["money"] += 30000
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 30000"
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     else:
