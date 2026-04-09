@@ -141,7 +141,7 @@ def start(message):
         db["users"][user_id] = {}
         db["users"][user_id]["awaiting"] = "name"
         save_db()
-        bot.send_message(message.chat.id, "Введи свое имя")
+        bot.send_message(message.chat.id, "Приветик")
 
         return
 
@@ -174,7 +174,7 @@ def text(message):
 
 
     if message.text == "Привет":
-        bot.send_message(message.chat.id, "Привет")
+        bot.send_message(message.chat.id, "Задавай вопрос и не тупи")
     elif message.text == "Как дела?":
         bot.send_message(message.chat.id, "Отлично")
     elif message.text == "Игровой автомат":
@@ -182,7 +182,7 @@ def text(message):
     elif message.text == "Игральный кубик":
         dice_game(message)
     else:
-        msg = bot.send_message(message.chat.id, "Думаю над ответом")
+        msg = bot.send_message(message.chat.id, "")
         try:
             answer = chat(message.chat.id, message.text)
             send_long_message(message.chat.id, answer)
@@ -260,7 +260,8 @@ if __name__ == "__main__":
         except Exception:
             logging.exception("Ошибка при установке Webhook")
             bot.infinity_polling()
-
+    else:
+        bot.infinity_polling()
 
 
 
