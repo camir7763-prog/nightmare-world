@@ -1,9 +1,9 @@
 import os
-import sys
 import re
 import json
 import logging
 import requests
+from dotenv import load_dotenv
 from  flask import Flask, request
 import telebot
 from telebot import util
@@ -12,14 +12,14 @@ logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
-    sys.exit("Ошибка:BOT_TOKEN не задан в переменных окружения")
+    logging.warning("BOT_TOKEN не задан в переменных окружения")
+    load_dotenv(".env")
+    TOKEN = os.getenv("BOT_TOKEN")
 
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 app = Flask(__name__)
 
 MAX_LEN = 4096
-
-
 
 def convert_markdown_to_html(text: str) -> str:
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
@@ -77,11 +77,13 @@ def save_history():
 API_KEY = os.getenv('API_KEY')
 if not API_KEY:
     logging.warning("API_KEY не задан: чат_модель будет недоступна")
+    load_dotenv(".env")
+    API_KEY = os.getenv("API_KEY")
 
 def chat(user_id, text):
     try:
         if str(user_id) not in history:
-            history[str(user_id)] = [{"role": "system","content": "Ты - дружелюбный помошник"}]
+            history[str(user_id)] = [{"role": "system","content": "Ты - недружелюбный помошник"}]
         history[str(user_id)].append({"role": "user", "content":text})
         if len(history[str(user_id)]) > 16:
             history[str(user_id)] = [history[str(user_id)][0]] + history[str(user_id)][-15:]
@@ -221,21 +223,21 @@ def slot_game(message):
     value = bot.send_dice(message.chat.id, emoji="🎰").dice.value
 
     if value in (1, 22, 43):                                # 3 одинаковых значения
-        db["users"][message.chat.id]["money"] == 3000
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 3000. "
+        db["users"][message.chat.id]["money"] == 1000
+        bot.send_message(message.chat.id, "Победа сумма выиграша составила 1000. "
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     elif value in (16, 32, 48):                             # Первые два значения - 7
         db["users"][message.chat.id]["money"] == 5000
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 5000"
+        bot.send_message(message.chat.id, "Победа сумма выиграша составила 3500"
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
 
     elif value == 64:                                       # Три 7
         bot.send_message(message.chat.id, "Jackpot")
         db["users"][message.chat.id]["money"] == 10000
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 10000"
+        bot.send_message(message.chat.id, "Победа сумма выиграша составила 30000"
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     else:
-        bot.send_message(message.chat.id, "Ты проиграл")
+        bot.send_message(message.chat.id, "Ты проиграл лох")
 
 
 if __name__ == "__main__":
@@ -251,7 +253,7 @@ if __name__ == "__main__":
             app.run(host='0.0.0.0', port=port)
         except Exception:
             logging.exception("Ошибка при установке Webhook")
-            
+            bot.infinity_polling()
 
 
 
