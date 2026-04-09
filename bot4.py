@@ -220,7 +220,7 @@ def diceButtonClicked(call):
             db["users"][call.message.chat.id]["money"] += win
 
             bot.send_message(call.message.chat.id,
-                             text=f"Ты выиграл {win}! 🎉\nБаланс: {db['users'][call.message.chat.id]['money']}")
+                             text=f"Ты выиграл {win}!\nБаланс: {db['users'][call.message.chat.id]['money']}")
         bot.send_message(call.message.chat.id, "Ты выиграл")
     else:
         bot.send_message(call.message.chat.id, "Попробуй еще раз")
