@@ -141,7 +141,7 @@ def start(message):
         db["users"][user_id] = {}
         db["users"][user_id]["awaiting"] = "name"
         save_db()
-        bot.send_message(message.chat.id, "Напиши своё имя советую писать не настоящее")
+        bot.send_message(message.chat.id, "Напиши своё имя,советую писать не настоящее")
 
         return
 
