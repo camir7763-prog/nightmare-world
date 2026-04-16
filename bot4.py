@@ -243,7 +243,7 @@ def slot_game(message):
         bot.send_message(message.chat.id, "Победа сумма выиграша составила 30000"
                                           f"Текуший баланс: {db['users'][message.chat.id]['money']}")
     else:
-        bot.send_message(message.chat.id, "Ты проиграл лох")
+        bot.send_message(message.chat.id, "Не повезло попробуй ещё раз")
 
 
 if __name__ == "__main__":
