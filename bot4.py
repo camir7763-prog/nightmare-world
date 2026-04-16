@@ -182,7 +182,7 @@ def text(message):
     elif message.text == "Игральный кубик":
         dice_game(message)
     else:
-        msg = bot.send_message(message.chat.id, "")
+        msg = bot.send_message(message.chat.id, "Думаю над ответом")
         try:
             answer = chat(message.chat.id, message.text)
             send_long_message(message.chat.id, answer)
