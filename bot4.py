@@ -111,6 +111,7 @@ def chat(user_id, text):
             return content
         else:
             logging.error(f"Ошибка API: ")
+            logging.info(f"data: {data}")
     except Exception as e:
         logging.error(f"Ошибка при запросе")
         send_long_message(user_id, f"ошибка при запросе: {e}, повторите попытку позже")
