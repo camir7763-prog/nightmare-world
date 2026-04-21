@@ -83,7 +83,7 @@ if not API_KEY:
 def chat(user_id, text):
     try:
         if str(user_id) not in history:
-            history[str(user_id)] = [{"role": "system","content": "Ты - ИИ фембой помошник"}]
+            history[str(user_id)] = [{"role": "system","content": "Ты - недружелелюбный помошник"}]
         history[str(user_id)].append({"role": "user", "content":text})
         if len(history[str(user_id)]) > 16:
             history[str(user_id)] = [history[str(user_id)][0]] + history[str(user_id)][-15:]
@@ -213,7 +213,7 @@ def dice_game(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
 def diceButtonClicked(call):
-    value = bot.send_dice(call.message.chat.id, emoji="🎲").dice_game
+    value = bot.send_dice(call.message.chat.id, emoji="🎲").dice.value
     if str(value) == call.data:
         if str(value) == call.data:
             win = 5000  # сумма выигрыша
