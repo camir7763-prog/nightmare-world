@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from  flask import Flask, request
 import telebot
 from telebot import util
-
+BET = 1000
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -213,39 +213,61 @@ def dice_game(message):
     bot.send_message(message.chat.id, "Угадайте число на кубике", reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dice_"))
 def diceButtonClicked(call):
-    value = bot.send_dice(call.message.chat.id, emoji="🎲").dice.value
-    if str(value) == call.data:
-        if str(value) == call.data:
-            win = 5000  # сумма выигрыша
-            db["users"][call.message.chat.id]["money"] += win
+    user_id = call.message.chat.id
 
-            bot.send_message(call.message.chat.id,
-                             text=f"Ты выиграл {win}!\nБаланс: {db['users'][call.message.chat.id]['money']}")
-        bot.send_message(call.message.chat.id, "Ты выиграл")
+    choice = call.data.split("_")[1]  # что выбрал пользователь
+
+    if db["users"][user_id]["money"] < BET:
+        bot.answer_callback_query(call.id, "Недостаточно денег")
+        return
+
+    value = bot.send_dice(user_id, emoji="🎲").dice.value
+
+    if str(value) == choice:
+        win = 5000
+        db["users"][user_id]["money"] += win
+        bot.send_message(user_id, f" Угадал! Выпало {value}\n+{win}\nБаланс: {db['users'][user_id]['money']}")
     else:
-        bot.send_message(call.message.chat.id, "Как так то, попробуй еще раз")
+        db["users"][user_id]["money"] -= BET
+        bot.send_message(user_id, f" Не угадал (выпало {value})\n-{BET}\nБаланс: {db['users'][user_id]['money']}")
+
+    save_db()
+    bot.answer_callback_query(call.id,"Как так то, попробуй еще раз")
 
 def slot_game(message):
-    value = bot.send_dice(message.chat.id, emoji="🎰").dice.value
+    def slot_game(message):
+        user_id = message.chat.id
 
-    if value in (1, 22, 43):                                # 3 одинаковых значения
-        db["users"][message.chat.id]["money"] += 1000
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 1000. "
-                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
-    elif value in (16, 32, 48):                             # Первые два значения - 7
-        db["users"][message.chat.id]["money"] += 3500
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 3500"
-                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
+        if db["users"][user_id]["money"] < BET:
+            bot.send_message(user_id, "Недостаточно денег")
+            return
 
-    elif value == 64:                                       # Три 7
-        bot.send_message(message.chat.id, "Jackpot")
-        db["users"][message.chat.id]["money"] += 10000
-        bot.send_message(message.chat.id, "Победа сумма выиграша составила 30000"
-                                          f"Текуший баланс: {db['users'][message.chat.id]['money']}")
-    else:
-        bot.send_message(message.chat.id, "Не повезло, попробуй ещё раз")
+        value = bot.send_dice(user_id, emoji="🎰").dice.value
 
+        if value in (1, 22, 43):
+            win = 1000
+            db["users"][user_id]["money"] += win
+            bot.send_message(user_id,
+                             f" Победа! +{win}\nБаланс: {db['users'][user_id]['money']}")
+
+        elif value in (16, 32, 48):
+            win = 3500
+            db["users"][user_id]["money"] += win
+            bot.send_message(user_id,
+                             f" Победа! +{win}\nБаланс: {db['users'][user_id]['money']}")
+        elif value == 64:
+            win = 10000
+            db["users"][user_id]["money"] += win
+            bot.send_message(user_id,
+                             f" JACKPOT! +{win}\nБаланс: {db['users'][user_id]['money']}")
+        else:
+            db["users"][user_id]["money"] -= BET
+            bot.send_message(user_id,
+                             f" Проиграл -{BET}\nБаланс: {db['users'][user_id]['money']}")
+
+        save_db()
 
 if __name__ == "__main__":
     server_url = os.getenv("RENDER_EXTERNAL_URL")
