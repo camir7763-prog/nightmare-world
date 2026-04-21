@@ -79,7 +79,7 @@ if not API_KEY:
     logging.warning("API_KEY не задан: чат_модель будет недоступна")
     load_dotenv(".env")
     API_KEY = os.getenv("API_KEY")
-
+logging.info(f"API_KEY: {API_KEY}")
 def chat(user_id, text):
     try:
         if str(user_id) not in history:
