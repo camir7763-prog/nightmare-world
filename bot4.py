@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from  flask import Flask, request
 import telebot
 from telebot import util
+import sys
+
 BET = 1000
 logging.basicConfig(level=logging.INFO)
 
@@ -164,14 +166,51 @@ def info(message):
 @bot.message_handler(commands=['restart'])
 def restart_bot(message):
     bot.send_message(message.chat.id, "Перезапуск...")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
-@bot.message_handler(commands=['stop'])
-def stop_bot(message):
-    bot.send_message(message.chat.id, "Бот остоновился")
+@bot.message_handler(commands=['balance'])
+def balance_cmd(message):
+    user_id = message.chat.id
+
+@bot.message_handler(commands=['bet'])
+def set_bet(message):
+    user_id = message.chat.id
+    args = message.text.split()
+
+    if len(args) < 2 or not args[1].isdigit():
+        bot.send_message(user_id, "Пример: /bet 1000")
+        return
+
+    bet = int(args[1])
+
+    if bet <= 0:
+        bot.send_message(user_id, "Ставка должна быть > 0")
+        return
+
+    db["users"][user_id]["bet"] = bet
+    save_db()
+
+    bot.send_message(user_id, f" Ставка установлена: {bet}")
+    BET = db["users"][user_id].get("bet", 1000)
+
+
 
 @bot.message_handler(content_types=['text'])
 def text(message):
     user_id = message.chat.id
+
+    user = db["users"][user_id]
+    BET = user.get("bet", 1000)
+
+    # удача (чуть повышает шанс)
+    luck = user.get("luck", 0)
+
+    # пример: увеличить шанс
+    import random
+    if random.randint(1, 100) < luck:
+        value = 64  # как будто джекпот
+
+
 
 
 
