@@ -288,35 +288,39 @@ def KeyboardButton(call):
     bot.answer_callback_query(call.id,"Как так то, попробуй еще раз")
 
 def slot_game(message):
-    def slot_game(message):
-        user_id = message.chat.id
+    user_id = message.chat.id
+    user = db["users"].setdefault(user_id, {})
 
-        if db["users"][user_id]["money"] < BET:
-            bot.send_message(user_id, "Недостаточно денег")
-            return
+    # если вдруг нет денег
+    if "money" not in user:
+        user["money"] = 10000
 
-        value = bot.send_dice(user_id, emoji="🎰").dice.value
+    if user["money"] <= 0:
+        bot.send_message(user_id, "У тебя нет денег")
+        return
 
-        if value in (1, 22, 43):
-            win = 1000
-            db["users"][user_id]["money"] += win
-            bot.send_message(user_id,
-                             f" Победа! +{win}\nБаланс: {db['users'][user_id]['money']}")
+    dice = bot.send_dice(user_id, emoji="🎰")
+    value = dice.dice.value if dice and dice.dice else 0
 
-        elif value in (16, 32, 48):
-            win = 3500
-            db["users"][user_id]["money"] += win
-            bot.send_message(user_id,
-                             f" Победа! +{win}\nБаланс: {db['users'][user_id]['money']}")
-        elif value == 64:
-            win = 10000
-            db["users"][user_id]["money"] += win
-            bot.send_message(user_id,
-                             f" JACKPOT! +{win}\nБаланс: {db['users'][user_id]['money']}")
-        else:
-            db["users"][user_id]["money"] -= BET
-            bot.send_message(user_id,
-                             f" Проиграл -{BET}\nБаланс: {db['users'][user_id]['money']}")
+    if value in (1, 22, 43):
+        win = 1000
+        user["money"] += win
+        bot.send_message(user_id, f" Победа +{win}\nБаланс: {user['money']}")
+
+    elif value in (16, 32, 48):
+        win = 3000
+        user["money"] += win
+        bot.send_message(user_id, f" Победа +{win}\nБаланс: {user['money']}")
+
+    elif value == 64:
+        win = 10000
+        user["money"] += win
+        bot.send_message(user_id, f" JACKPOT +{win}\nБаланс: {user['money']}")
+
+    else:
+        lose = 2000
+        user["money"] -= lose
+        bot.send_message(user_id, f" Проиграл -{lose}\nБаланс: {user['money']}")
 
         save_db()
 
