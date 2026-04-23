@@ -214,7 +214,7 @@ def dice_game(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
 @bot.callback_query_handler(func=lambda call: call.data.startswith("dice_"))
-def diceButtonClicked(call):
+def KeyboardButton(call):
     user_id = call.message.chat.id
 
     choice = call.data.split("_")[1]  # что выбрал пользователь
