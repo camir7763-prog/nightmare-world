@@ -210,10 +210,14 @@ def text(message):
     if random.randint(1, 100) < luck:
         value = 64  # как будто джекпот
 
+    @bot.message_handler(commands=['resetall'])
+    def reset_all(message):
+        return
+    for uid in db["users"]:
+        db["users"][uid]["money"] = 10000
 
-
-
-
+        save_db()
+        bot.send_message(message.chat.id, " Баланс всем сброшен")
 
     if db["users"].get(user_id).get("awaiting") == "name":
         db["users"][user_id]["name"] = message.text
@@ -222,6 +226,7 @@ def text(message):
         save_db()
         start(message)
         return
+
 
 
     if message.text == "Привет":
@@ -251,20 +256,19 @@ def text(message):
 def dice_game(message):
     keyboard = telebot.types.InlineKeyboardMarkup(row_width=3)
 
-    btn1 = telebot.types.KeyboardButton("1", callback_data="1")
-    btn2 = telebot.types.KeyboardButton("2", callback_data="2")
-    btn3 = telebot.types.KeyboardButton("3", callback_data="3")
-    btn4 = telebot.types.KeyboardButton("4", callback_data="4")
-    btn5 = telebot.types.KeyboardButton("5", callback_data="5")
-    btn6 = telebot.types.KeyboardButton("6", callback_data="6")
-
+    btn1 = telebot.types.InlineKeyboardButton("1", callback_data="1")
+    btn2 = telebot.types.InlineKeyboardButton("2", callback_data="2")
+    btn3 = telebot.types.InlineKeyboardButton("3", callback_data="3")
+    btn4 = telebot.types.InlineKeyboardButton("4", callback_data="4")
+    btn5 = telebot.types.InlineKeyboardButton("5", callback_data="5")
+    btn6 = telebot.types.InlineKeyboardButton("6", callback_data="6")
+    print('test')
     keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
 
     bot.send_message(message.chat.id, "Угадайте число на кубике", reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
-@bot.callback_query_handler(func=lambda call: call.data.startswith("dice_"))
 def KeyboardButton(call):
     user_id = call.message.chat.id
 
