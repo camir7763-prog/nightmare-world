@@ -159,11 +159,22 @@ def start(message):
 
 @bot.message_handler(commands=['info'])
 def info(message):
-    bot.send_message(message.chat.id, "Информация о боте")
+    bot.send_message(message.chat.id, "Информация о боте "
+                                     "Бот создан в качестве просто развлечения")
+@bot.message_handler(commands=['restart'])
+def restart_bot(message):
+    bot.send_message(message.chat.id, "Перезапуск...")
+
+@bot.message_handler(commands=['stop'])
+def stop_bot(message):
+    bot.send_message(message.chat.id, "Бот остоновился")
 
 @bot.message_handler(content_types=['text'])
 def text(message):
     user_id = message.chat.id
+
+
+
 
     if db["users"].get(user_id).get("awaiting") == "name":
         db["users"][user_id]["name"] = message.text
@@ -211,6 +222,7 @@ def dice_game(message):
     keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
 
     bot.send_message(message.chat.id, "Угадайте число на кубике", reply_markup=keyboard)
+
 
 @bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
 @bot.callback_query_handler(func=lambda call: call.data.startswith("dice_"))
