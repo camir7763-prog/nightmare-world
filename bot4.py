@@ -4,17 +4,15 @@ import json
 import logging
 import requests
 from dotenv import load_dotenv
-from  flask import Flask, request
+from flask import Flask, request
 import telebot
 from telebot import util
 import sys
 
-BET = 1000
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
-    logging.warning("BOT_TOKEN не задан в переменных окружения")
     load_dotenv(".env")
     TOKEN = os.getenv("BOT_TOKEN")
 
@@ -23,335 +21,200 @@ app = Flask(__name__)
 
 MAX_LEN = 4096
 
+# -------------------- ТЕКСТ --------------------
 def convert_markdown_to_html(text: str) -> str:
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
-    text = re.sub(r'__(.*?)__', r'<u>\1</u>', text)
-    text = re.sub(r'~~(.*?)~~', r'<s>\1</s>', text)
-    text = re.sub(r'`([^`]`)', r'<code>\1</code>', text)
-    text = re.sub(r'\[(.*?)\](\(.*?)\)', r'<a href="\2">>\1</b>', text)
     return text
 
 def send_long_message(chat_id, text, parse_mode='HTML'):
-    try:
-        safe_text = convert_markdown_to_html(text or "")
-        for part in util.smart_split(safe_text, MAX_LEN):
-            bot.send_message(chat_id, part, parse_mode=parse_mode)
-    except Exception as e:
-        logging.error(f"Ошибка: {e}")
+    safe_text = convert_markdown_to_html(text or "")
+    for part in util.smart_split(safe_text, MAX_LEN):
+        bot.send_message(chat_id, part, parse_mode=parse_mode)
 
-
+# -------------------- WEBHOOK --------------------
 @app.route('/')
 def index():
     return "bot is running!"
 
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
-    try:
-        json_str =request.get_data(as_text=True)
-        update = telebot.types.Update.de_json(json_str)
-        if update:
-            bot.process_new_updates([update])
-
-    except Exception as e:
-        app.logger.exception("Webhook error: %s", e)
+    update = telebot.types.Update.de_json(request.get_data(as_text=True))
+    if update:
+        bot.process_new_updates([update])
     return '', 200
 
-
+# -------------------- ИСТОРИЯ --------------------
 history_file = "history.json"
 history = {}
 
 if os.path.exists(history_file):
-    try:
-        with open(history_file, "r", encoding='utf-8') as f:
-            history = json.load(f)
-    except Exception:
-        history = {}
+    with open(history_file, "r", encoding='utf-8') as f:
+        history = json.load(f)
 
 def save_history():
-    try:
-        with open(history_file, "w", encoding='utf-8') as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logging.error(("Ошибка сохранения истории:%s", e))
-
+    with open(history_file, "w", encoding='utf-8') as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
 
 API_KEY = os.getenv('API_KEY')
-if not API_KEY:
-    logging.warning("API_KEY не задан: чат_модель будет недоступна")
-    load_dotenv(".env")
-    API_KEY = os.getenv("API_KEY")
 
 def chat(user_id, text):
-    try:
-        if str(user_id) not in history:
-            history[str(user_id)] = [{"role": "system","content": "Ты - недружелелюбный помошник"}]
-        history[str(user_id)].append({"role": "user", "content":text})
-        if len(history[str(user_id)]) > 16:
-            history[str(user_id)] = [history[str(user_id)][0]] + history[str(user_id)][-15:]
+    if str(user_id) not in history:
+        history[str(user_id)] = [{"role": "system","content": "Ты - помощник"}]
 
-        url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization":f"Bearer {API_KEY}" if API_KEY else ""}
-        data = {"model": "deepseek-ai/DeepSeek-R1-0528","messages": history[str(user_id)]}
+    history[str(user_id)].append({"role": "user", "content": text})
 
-        response = requests.post(url, headers=headers, json=data, timeout=300)
-        data = response.json()
+    url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
+    headers = {"Content-Type": "application/json","Authorization": f"Bearer {API_KEY}"}
+    data = {"model": "deepseek-ai/DeepSeek-R1-0528","messages": history[str(user_id)]}
 
-        if isinstance(data, dict) and data.get('choices'):
-            content = data['choices'][0]['message']['content']
-            history[str(user_id)].append({"role": "assistant", "content": content})
+    response = requests.post(url, headers=headers, json=data)
+    data = response.json()
 
-            if len(history[str(user_id)]) > 16:
-                history[str(user_id)] = [history[str(user_id)][0]] + history[str(user_id)][-15:]
+    content = data['choices'][0]['message']['content']
+    history[str(user_id)].append({"role": "assistant", "content": content})
 
-            save_history()
+    save_history()
+    return content
 
-            if '</think>' in content:
-                return content.split('</think>', 1)[1]
-            return content
-        else:
-            logging.error(f"Ошибка API: ")
-            logging.info(f"data: {data}")
-    except Exception as e:
-        logging.error(f"Ошибка при запросе")
-        send_long_message(user_id, f"ошибка при запросе: {e}, повторите попытку позже")
-
-
-
-db = {"users": {}}
+# -------------------- БАЗА --------------------
 db_path = "db.json"
+db = {"users": {}}
 
+if os.path.exists(db_path) and os.path.getsize(db_path) != 0:
+    with open(db_path, "r", encoding='utf-8') as f:
+        db = json.load(f)
 
 def save_db():
-    with open("db.json", "w", encoding='utf-8') as file:
-        json.dump(db, file, ensure_ascii=False, indent=4)
-        
-if os.path.exists(db_path) and os.path.getsize(db_path) != 0:
-    with open(db_path, "r", encoding='utf-8') as file:
-        db = json.load(file)
-else:
-    with open("db.json", "w", encoding='utf-8') as file:
-        json.dump(db, file, ensure_ascii=False, indent=4)
+    with open(db_path, "w", encoding='utf-8') as f:
+        json.dump(db, f, ensure_ascii=False, indent=4)
 
-
+# -------------------- КОМАНДЫ --------------------
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.chat.id
 
-    if user_id not in db["users"] or db ["users"].get(user_id).get("awaiting") == ("name"):
-        db["users"][user_id] = {}
-        db["users"][user_id]["awaiting"] = "name"
+    if user_id not in db["users"] or db["users"].get(user_id, {}).get("awaiting") == "name":
+        db["users"][user_id] = {"awaiting": "name"}
         save_db()
-        bot.send_message(message.chat.id, "Напиши своё имя,советую писать не настоящее")
-
+        bot.send_message(user_id, "Напиши имя")
         return
 
     db["users"][user_id]["money"] = 20000
     save_db()
+
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("Игровой автомат", "Игральный кубик")
 
-    slot_button = telebot.types.KeyboardButton("Игровой автомат")
-    dice_button = telebot.types.KeyboardButton("Игральный кубик")
+    bot.send_message(user_id, "Привет", reply_markup=keyboard)
 
-    keyboard.add(slot_button, dice_button)
+@bot.message_handler(commands=['balance'])
+def balance_cmd(message):
+    user_id = message.chat.id
+    user = db["users"].setdefault(user_id, {"money": 10000})
 
-    bot.send_message(message.chat.id, f"Привет",{db["users"][user_id]["awaiting"]}, reply_markup=keyboard)
+    bot.send_message(user_id, f"💰 Баланс: {user.get('money', 0)}")
 
-@bot.message_handler(commands=['info'])
-def info(message):
-    bot.send_message(message.chat.id, "Информация о боте "
-                                     "Бот создан в качестве просто развлечения")
+@bot.message_handler(commands=['resetall'])
+def reset_all(message):
+    for uid in db["users"]:
+        db["users"][uid]["money"] = 10000
+
+    save_db()
+    bot.send_message(message.chat.id, "Баланс всем сброшен")
+
 @bot.message_handler(commands=['restart'])
 def restart_bot(message):
     bot.send_message(message.chat.id, "Перезапуск...")
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
-@bot.message_handler(commands=['balance'])
-def balance_cmd(message):
-    user_id = message.chat.id
-
-@bot.message_handler(commands=['bet'])
-def set_bet(message):
-    user_id = message.chat.id
-    args = message.text.split()
-
-    if len(args) < 2 or not args[1].isdigit():
-        bot.send_message(user_id, "Пример: /bet 1000")
-        return
-
-    bet = int(args[1])
-
-    if bet <= 0:
-        bot.send_message(user_id, "Ставка должна быть > 0")
-        return
-
-    db["users"][user_id]["bet"] = bet
-    save_db()
-
-    bot.send_message(user_id, f" Ставка установлена: {bet}")
-    BET = db["users"][user_id].get("bet", 1000)
-
-
-
+# -------------------- ТЕКСТ --------------------
 @bot.message_handler(content_types=['text'])
 def text(message):
     user_id = message.chat.id
+    user = db["users"].setdefault(user_id, {})
 
-    user = db["users"][user_id]
-    BET = user.get("bet", 1000)
-
-    # удача (чуть повышает шанс)
-    luck = user.get("luck", 0)
-
-    # пример: увеличить шанс
-    import random
-    if random.randint(1, 100) < luck:
-        value = 64  # как будто джекпот
-
-    @bot.message_handler(commands=['resetall'])
-    def reset_all(message):
-        return
-    for uid in db["users"]:
-        db["users"][uid]["money"] = 10000
-
-        save_db()
-        bot.send_message(message.chat.id, " Баланс всем сброшен")
-
-    if db["users"].get(user_id).get("awaiting") == "name":
-        db["users"][user_id]["name"] = message.text
-        db["users"][user_id]["awaiting"] = None
-        db["users"] [user_id]["money"] = 10000
+    if user.get("awaiting") == "name":
+        user["name"] = message.text
+        user["awaiting"] = None
+        user["money"] = 10000
         save_db()
         start(message)
         return
 
-
-
-    if message.text == "Привет":
-        bot.send_message(message.chat.id, "Задавай вопрос и не тупи")
-    elif message.text == "Как дела?":
-        bot.send_message(message.chat.id, "Отлично")
-    elif message.text == "Игровой автомат":
+    if message.text == "Игровой автомат":
         slot_game(message)
     elif message.text == "Игральный кубик":
         dice_game(message)
     else:
-        msg = bot.send_message(message.chat.id, "Думаю над ответом")
-        try:
-            answer = chat(message.chat.id, message.text)
-            send_long_message(message.chat.id, answer)
-        except Exception as e:
-            logging.error(e)
-            bot.send_message(message.chat.id, "Возникла ошибка при обработке запроса")
+        msg = bot.send_message(user_id, "Думаю...")
+        answer = chat(user_id, message.text)
+        send_long_message(user_id, answer)
+        bot.delete_message(user_id, msg.message_id)
 
-        finally:
-            try:
-                bot.delete_message(message.chat.id, msg.message_id)
-            except Exception:
-                pass
     save_db()
 
+# -------------------- КУБИК --------------------
 def dice_game(message):
-    keyboard = telebot.types.InlineKeyboardMarkup(row_width=3)
+    keyboard = telebot.types.InlineKeyboardMarkup()
 
-    btn1 = telebot.types.InlineKeyboardButton("1", callback_data="1")
-    btn2 = telebot.types.InlineKeyboardButton("2", callback_data="2")
-    btn3 = telebot.types.InlineKeyboardButton("3", callback_data="3")
-    btn4 = telebot.types.InlineKeyboardButton("4", callback_data="4")
-    btn5 = telebot.types.InlineKeyboardButton("5", callback_data="5")
-    btn6 = telebot.types.InlineKeyboardButton("6", callback_data="6")
-    print('test')
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
+    buttons = [
+        telebot.types.InlineKeyboardButton(str(i), callback_data=f"dice_{i}")
+        for i in range(1, 7)
+    ]
 
-    bot.send_message(message.chat.id, "Угадайте число на кубике", reply_markup=keyboard)
+    keyboard.add(*buttons)
+    bot.send_message(message.chat.id, "Выбери число", reply_markup=keyboard)
 
-
-@bot.callback_query_handler(func=lambda call: call.data in ('1', '2', '3', '4', '5', '6'))
-def KeyboardButton(call):
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dice_"))
+def dice_callback(call):
     user_id = call.message.chat.id
+    user = db["users"].setdefault(user_id, {"money": 10000})
 
-    choice = call.data.split("_")[1]  # что выбрал пользователь
+    bet = 1000
+    choice = int(call.data.split("_")[1])
 
-    if db["users"][user_id]["money"] < BET:
-        bot.answer_callback_query(call.id, "Недостаточно денег")
+    if user["money"] < bet:
+        bot.answer_callback_query(call.id, "Нет денег")
         return
 
     value = bot.send_dice(user_id, emoji="🎲").dice.value
 
-    if str(value) == choice:
-        win = 5000
-        db["users"][user_id]["money"] += win
-        bot.send_message(user_id, f" Угадал! Выпало {value}\n+{win}\nБаланс: {db['users'][user_id]['money']}")
+    if value == choice:
+        user["money"] += 5000
+        bot.send_message(user_id, f"Угадал! +5000\nБаланс: {user['money']}")
     else:
-        db["users"][user_id]["money"] -= BET
-        bot.send_message(user_id, f" Не угадал (выпало {value})\n-{BET}\nБаланс: {db['users'][user_id]['money']}")
+        user["money"] -= bet
+        bot.send_message(user_id, f"Не угадал ({value}) -1000\nБаланс: {user['money']}")
 
     save_db()
-    bot.answer_callback_query(call.id,"Как так то, попробуй еще раз")
+    bot.answer_callback_query(call.id)
 
+# -------------------- СЛОТ --------------------
 def slot_game(message):
     user_id = message.chat.id
-    user = db["users"].setdefault(user_id, {})
-
-    # если вдруг нет денег
-    if "money" not in user:
-        user["money"] = 10000
+    user = db["users"].setdefault(user_id, {"money": 10000})
 
     if user["money"] <= 0:
-        bot.send_message(user_id, "У тебя нет денег")
+        bot.send_message(user_id, "Нет денег")
         return
 
-    dice = bot.send_dice(user_id, emoji="🎰")
-    value = dice.dice.value if dice and dice.dice else 0
+    value = bot.send_dice(user_id, emoji="🎰").dice.value
 
     if value in (1, 22, 43):
-        win = 1000
-        user["money"] += win
-        bot.send_message(user_id, f" Победа +{win}\nБаланс: {user['money']}")
-
+        user["money"] += 1000
+        bot.send_message(user_id, f"+1000 Баланс: {user['money']}")
     elif value in (16, 32, 48):
-        win = 3000
-        user["money"] += win
-        bot.send_message(user_id, f" Победа +{win}\nБаланс: {user['money']}")
-
+        user["money"] += 3000
+        bot.send_message(user_id, f"+3000 Баланс: {user['money']}")
     elif value == 64:
-        win = 10000
-        user["money"] += win
-        bot.send_message(user_id, f" JACKPOT +{win}\nБаланс: {user['money']}")
-
+        user["money"] += 10000
+        bot.send_message(user_id, f"JACKPOT +10000 Баланс: {user['money']}")
     else:
-        lose = 2000
-        user["money"] -= lose
-        bot.send_message(user_id, f" Проиграл -{lose}\nБаланс: {user['money']}")
+        user["money"] -= 2000
+        bot.send_message(user_id, f"-2000 Баланс: {user['money']}")
 
-        save_db()
+    save_db()
 
-if __name__ == "__main__":
-    server_url = os.getenv("RENDER_EXTERNAL_URL")
-    if server_url and TOKEN:
-        webhook_url = f"{server_url.rstrip('/')}/{TOKEN}"
-        try:
-            r = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-                             params={"url": webhook_url}, timeout=10)
-            logging.info("Webhook установлен: %s", r.text)
-            port = int(os.environ.get("PORT", 10000))
-            logging.info("Starting server on port %s", port)
-            app.run(host='0.0.0.0', port=port)
-        except Exception:
-            logging.exception("Ошибка при установке Webhook")
-            bot.infinity_polling()
-    else:
-        bot.infinity_polling()
-
-
-
-
-
-
-
-
-
-
-
+# -------------------- ЗАПУСК --------------------
+bot.infinity_polling()
