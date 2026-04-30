@@ -337,7 +337,7 @@ def slot_game(message):
         bot.send_message(user_id, f" JACKPOT +{win}\nБаланс: {user['money']}")
 
     else:
-        lose = 2000
+        lose = 1000
         user["money"] -= lose
         bot.send_message(user_id, f" Проиграл -{lose}\nБаланс: {user['money']}")
 
