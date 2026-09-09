@@ -76,7 +76,7 @@ def save_history():
 
 API_KEY = os.getenv('API_KEY')
 if not API_KEY:
-    logging.warning("API_KEY не задан: чат_модель будет недоступна")
+    logging.warning("sk-f2f178791b084c1191573b7fee3b4cfa")
 
 ROLES = {
     "default": "Ты - недружелюбный помощник.",
